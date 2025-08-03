@@ -1,6 +1,6 @@
 # Binance Data Downloader & Analyzer
 
-Программа для загрузки и анализа минутных данных о ценах криптовалютных пар с биржи Binance.
+Программа для загрузки и анализа данных о ценах криптовалютных пар с биржи Binance с поддержкой различных таймфреймов.
 
 ## Описание
 
@@ -8,13 +8,14 @@
 - `main.py` - загрузка исторических данных о ценах с Binance API
 - `analys.py` - анализ загруженных данных, расчет процентных изменений и частотный анализ
 
-Программа автоматически определяет реальную дату начала торгов для любой валютной пары на Binance, что позволяет получать данные начиная с момента листинга пары на бирже.
+Программа автоматически определяет реальную дату начала торгов для любой валютной пары на Binance и поддерживает работу с различными таймфреймами свечей.
 
 ## Особенности
 
 - ✅ Автоматическое определение даты начала торгов для любой пары
-- ✅ Загрузка минутных свечей (OHLCV) с Binance API
-- ✅ Расчет процентных изменений цен между соседними минутами
+- ✅ Поддержка всех доступных таймфреймов Binance
+- ✅ Загрузка свечей (OHLCV) с Binance API
+- ✅ Расчет процентных изменений цен между соседними свечами
 - ✅ Частотный анализ изменений цен
 - ✅ Гибкая работа с разными валютными парами через аргументы командной строки
 - ✅ Автоматическое сохранение прогресса загрузки
@@ -24,6 +25,7 @@
 ## Требования
 
 - Python 3.7+
+- UV (Python package manager)
 - Библиотеки: `requests`, `argparse`
 
 ## Установка
@@ -34,9 +36,14 @@ git clone <URL-репозитория>
 cd <имя-папки>
 ```
 
-2. Установите необходимые зависимости:
+2. Установите UV (если еще не установлен):
 ```bash
-pip install requests
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+3. Установите необходимые зависимости:
+```bash
+uv sync
 ```
 
 ## Использование
@@ -47,24 +54,28 @@ pip install requests
 
 ```bash
 # Базовый синтаксис
-python main.py --symbol СИМВОЛ
+uv run main.py --symbol СИМВОЛ --interval ТАЙМФРЕЙМ
 
-# Пример для ZROUSDT
-python main.py --symbol ZROUSDT
+# Пример для ZROUSDT с минутными свечами
+uv run main.py --symbol ZROUSDT --interval 1m
 
-# Пример для BTCUSDT
-python main.py --symbol BTCUSDT
+# Пример для BTCUSDT с часовыми свечами
+uv run main.py --symbol BTCUSDT --interval 1h
 
-# С указанием начальной даты (если хотите ограничить период)
-python main.py --symbol ETHUSDT --start_date "2023-01-01 00:00:00"
+# Пример для ETHUSDT с дневными свечами
+uv run main.py --symbol ETHUSDT --interval 1d
+
+# С указанием начальной даты
+uv run main.py --symbol ETHUSDT --interval 4h --start_date "2023-01-01 00:00:00"
 ```
 
 **Параметры:**
 - `--symbol` - торговая пара (например, ZROUSDT, BTCUSDT, ETHUSDT)
+- `--interval` - таймфрейм свечей (1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M)
 - `--start_date` - начальная дата загрузки в формате "YYYY-MM-DD HH:MM:SS" (опционально)
 
 **Результат выполнения:**
-- Создается файл `{символ}_minute_prices.json` с минутными данными о ценах
+- Создается файл `{символ}_{интервал}_prices.json` с данными о ценах
 - В консоли отображается прогресс загрузки
 - Логи сохраняются в файл `data_download.log`
 
@@ -74,34 +85,60 @@ python main.py --symbol ETHUSDT --start_date "2023-01-01 00:00:00"
 
 ```bash
 # Базовый синтаксис
-python analys.py --symbol СИМВОЛ
+uv run analys.py --symbol СИМВОЛ --interval ТАЙМФРЕЙМ
 
-# Пример для ZROUSDT
-python analys.py --symbol ZROUSDT
+# Пример для ZROUSDT с минутными свечами
+uv run analys.py --symbol ZROUSDT --interval 1m
 
-# Пример для BTCUSDT
-python analys.py --symbol BTCUSDT
+# Пример для BTCUSDT с часовыми свечами
+uv run analys.py --symbol BTCUSDT --interval 1h
 ```
 
 **Результат выполнения:**
-- `price_changes_{символ}.json` - файл с процентными изменениями цен
-- `frequency_analysis_full_{символ}.json` - полный частотный анализ
-- `frequency_analysis_report_{символ}.txt` - текстовый отчет с анализом
+- `price_changes_{символ}_{интервал}.json` - файл с процентными изменениями цен
+- `frequency_analysis_full_{символ}_{интервал}.json` - полный частотный анализ
+- `frequency_analysis_report_{символ}_{интервал}.txt` - текстовый отчет с анализом
+
+## Доступные таймфреймы
+
+| Интервал | Описание |
+|---------|----------|
+| 1m | 1 минута |
+| 3m | 3 минуты |
+| 5m | 5 минут |
+| 15m | 15 минут |
+| 30m | 30 минут |
+| 1h | 1 час |
+| 2h | 2 часа |
+| 4h | 4 часа |
+| 6h | 6 часов |
+| 8h | 8 часов |
+| 12h | 12 часов |
+| 1d | 1 день |
+| 3d | 3 дня |
+| 1w | 1 неделя |
+| 1M | 1 месяц |
 
 ## Пример полного рабочего процесса
 
 ```bash
-# 1. Загрузка данных для ZROUSDT
-python main.py --symbol ZROUSDT
+# 1. Загрузка минутных данных для ZROUSDT
+uv run main.py --symbol ZROUSDT --interval 1m
 
-# 2. Анализ загруженных данных
-python analys.py --symbol ZROUSDT
+# 2. Анализ минутных данных
+uv run analys.py --symbol ZROUSDT --interval 1m
 
-# 3. Загрузка данных для другой пары
-python main.py --symbol BTCUSDT
+# 3. Загрузка часовых данных для BTCUSDT
+uv run main.py --symbol BTCUSDT --interval 1h
 
-# 4. Анализ данных для BTCUSDT
-python analys.py --symbol BTCUSDT
+# 4. Анализ часовых данных
+uv run analys.py --symbol BTCUSDT --interval 1h
+
+# 5. Загрузка дневных данных для ETHUSDT
+uv run main.py --symbol ETHUSDT --interval 1d
+
+# 6. Анализ дневных данных
+uv run analys.py --symbol ETHUSDT --interval 1d
 ```
 
 ## Структура проекта
@@ -111,15 +148,17 @@ python analys.py --symbol BTCUSDT
 ├── analys.py              # Скрипт анализа данных
 ├── data_download.log      # Логи загрузки
 ├── README.md              # Документация (этот файл)
-├── *_minute_prices.json   # Файлы с минутными данными
-├── price_changes_*.json   # Файлы с процентными изменениями
-├── frequency_analysis_full_*.json  # Полный частотный анализ
-└── frequency_analysis_report_*.txt # Текстовые отчеты
+├── *_1m_prices.json       # Файлы с минутными данными
+├── *_1h_prices.json       # Файлы с часовыми данными
+├── *_1d_prices.json       # Файлы с дневными данными
+├── price_changes_*_*.json # Файлы с процентными изменениями
+├── frequency_analysis_full_*_*.json  # Полный частотный анализ
+└── frequency_analysis_report_*_*.txt # Текстовые отчеты
 ```
 
 ## Описание файлов данных
 
-### 1. Минутные данные ({символ}_minute_prices.json)
+### 1. Данные о ценах ({символ}_{интервал}_prices.json)
 Формат: массив массивов `[timestamp, close_price]`
 ```json
 [
@@ -131,7 +170,7 @@ python analys.py --symbol BTCUSDT
 - `timestamp` - время открытия свечи в миллисекундах
 - `close_price` - цена закрытия свечи
 
-### 2. Процентные изменения (price_changes_{символ}.json)
+### 2. Процентные изменения (price_changes_{символ}_{интервал}.json)
 Формат: массив массивов `[timestamp, percentage_change]`
 ```json
 [
@@ -143,7 +182,7 @@ python analys.py --symbol BTCUSDT
 - `timestamp` - время изменения
 - `percentage_change` - процентное изменение цены (округлено до 10 знаков)
 
-### 3. Частотный анализ (frequency_analysis_full_{символ}.json)
+### 3. Частотный анализ (frequency_analysis_full_{символ}_{интервал}.json)
 Формат: массив массивов `[percentage_change, count]`
 ```json
 [
@@ -156,7 +195,7 @@ python analys.py --symbol BTCUSDT
 - `percentage_change` - значение процентного изменения
 - `count` - количество раз, которое встретилось это изменение
 
-### 4. Текстовый отчет (frequency_analysis_report_{символ}.txt)
+### 4. Текстовый отчет (frequency_analysis_report_{символ}_{интервал}.txt)
 Содержит:
 - Топ-50 самых частых изменений
 - Топ-50 самых редких изменений
@@ -169,7 +208,7 @@ python analys.py --symbol BTCUSDT
 Программа использует особенность Binance API: при запросе данных с временной меткой раньше даты листинга пары, API автоматически возвращает данные, начиная с реальной даты начала торгов.
 
 Алгоритм:
-1. Запрашивается первая минутная свеча с очень ранней даты (2010 год)
+1. Запрашивается первая свеча с очень ранней даты (2010 год) для указанного таймфрейма
 2. Binance API возвращает первую свечу, доступную для этой пары
 3. Полученная временная метка используется как дата начала загрузки
 
@@ -194,35 +233,38 @@ python analys.py --symbol BTCUSDT
 
 ### При загрузке данных:
 ```
-2024-01-01 12:00:00,000 - INFO - Starting ZROUSDT minute data download
-2024-01-01 12:00:00,001 - INFO - Getting first trading date for ZROUSDT
-2024-01-01 12:00:00,500 - INFO - First trading date for ZROUSDT: 2023-07-17 10:00:00
+2024-01-01 12:00:00,000 - INFO - Starting ZROUSDT 1h data download
+2024-01-01 12:00:00,001 - INFO - Getting first trading date for ZROUSDT with interval 1h
+2024-01-01 12:00:00,500 - INFO - First trading date for ZROUSDT (1h): 2023-07-17 10:00:00
 2024-01-01 12:00:00,501 - INFO - Using start date: 2023-07-17 10:00:00
-2024-01-01 12:00:01,000 - INFO - Successful request: 1689592800000 to 1689599199999
-2024-01-01 12:00:01,500 - INFO - Progress: 50000 records | From 2023-07-17 10:00:00 to 2023-08-01 15:00:00
+2024-01-01 12:00:01,000 - INFO - Successful request: 1689592800000 to 1689979199999
+2024-01-01 12:00:01,500 - INFO - Progress: 500 records | From 2023-07-17 10:00:00 to 2023-08-01 15:00:00
 ...
 ```
 
 ### При анализе данных:
 ```
-Загружено 123456 записей
-Обработано 100000/123455 записей (81.0%) | Текущая дата: 2023-08-01 15:00
+Загружено 1234 записей
+Обработано 1000/1233 записей (81.0%) | Текущая дата: 2023-08-01 15:00
 
-Процентные изменения сохранены в price_changes_zrousdt.json
+Процентные изменения сохранены в price_changes_zrousdt_1h.json
 
+Анализ для ZROUSDT (интервал: 1h)
+    Процентное изменение     |   Количество   
+----------------------------------------
 Самые частые изменения (топ-50):
-      0.0000000000% |      45,678
-      0.1000000000% |      12,345
-     -0.1000000000% |      11,234
+      0.0000000000% |         456
+      0.1000000000% |         123
+     -0.1000000000% |         112
 ...
-Полный отчет сохранен в frequency_analysis_report_zrousdt.txt
+Полный отчет сохранен в frequency_analysis_report_zrousdt_1h.txt
 ```
 
 ## Ограничения
 
 - Максимальное количество свечей в одном запросе: 1000
 - Задержка между запросами: 0.2 секунды (для соблюдения лимитов API)
-- Программа работает только с минутными таймфреймами
+- Программа работает только с указанными таймфреймами
 
 ---
 
