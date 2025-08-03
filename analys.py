@@ -42,7 +42,7 @@ def calculate_price_changes(input_file, output_file):
     print(f"\nПроцентные изменения сохранены в {output_file}")
     return results
 
-def frequency_analysis(changes_data, symbol):
+def frequency_analysis(changes_data, symbol, interval):
     symbol_lower = symbol.lower()
     
     # Извлекаем только значения изменений
@@ -55,7 +55,7 @@ def frequency_analysis(changes_data, symbol):
     sorted_freq = counter.most_common()
     
     # Сохраняем полный анализ в файл
-    with open(f'frequency_analysis_full_{symbol_lower}.json', 'w') as f:
+    with open(f'frequency_analysis_full_{symbol_lower}_{interval}.json', 'w') as f:
         json.dump(sorted_freq, f)
     
     # Находим экстремальные значения
@@ -68,6 +68,7 @@ def frequency_analysis(changes_data, symbol):
     report = []
     
     # Формируем заголовок
+    report.append(f"Анализ для {symbol} (интервал: {interval})")
     report.append(f"{'Процентное изменение':^25} | {'Количество':^12}")
     report.append("-" * 40)
     
@@ -98,7 +99,7 @@ def frequency_analysis(changes_data, symbol):
     report.append(f"Уникальных значений: {len(sorted_freq):,}")
     
     # Сохранение отчета
-    report_filename = f'frequency_analysis_report_{symbol_lower}.txt'
+    report_filename = f'frequency_analysis_report_{symbol_lower}_{interval}.txt'
     with open(report_filename, 'w') as f:
         f.write("\n".join(report))
     
@@ -110,26 +111,30 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze cryptocurrency price changes')
     parser.add_argument('--symbol', type=str, default='BNBUSDT',
                         help='Trading symbol (e.g., BNBUSDT, BTCUSDT, ETHUSDT)')
+    parser.add_argument('--interval', type=str, default='1m', 
+                        choices=['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'],
+                        help='Time interval for candles (default: 1m)')
     args = parser.parse_args()
     
     symbol = args.symbol
     symbol_lower = symbol.lower()
+    interval = args.interval
     
-    input_file = f"{symbol_lower}_minute_prices.json"
+    input_file = f"{symbol_lower}_{interval}_prices.json"
     
     # Проверяем существование файла
     if not os.path.exists(input_file):
         print(f"Ошибка: файл {input_file} не найден.")
-        print(f"Сначала скачайте данные для пары {symbol} с помощью main.py")
+        print(f"Сначала скачайте данные для пары {symbol} с интервалом {interval} с помощью main.py")
         return
     
-    changes_file = f"price_changes_{symbol_lower}.json"
+    changes_file = f"price_changes_{symbol_lower}_{interval}.json"
     
     # Шаг 1: Расчет процентных изменений
     changes_data = calculate_price_changes(input_file, changes_file)
     
     # Шаг 2: Частотный анализ
-    frequency_analysis(changes_data, symbol)
+    frequency_analysis(changes_data, symbol, interval)
 
 if __name__ == "__main__":
     main()

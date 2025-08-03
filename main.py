@@ -17,6 +17,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
+# Словарь для перевода интервала в миллисекунды
+INTERVAL_TO_MS = {
+    '1m': 60 * 1000,
+    '3m': 3 * 60 * 1000,
+    '5m': 5 * 60 * 1000,
+    '15m': 15 * 60 * 1000,
+    '30m': 30 * 60 * 1000,
+    '1h': 60 * 60 * 1000,
+    '2h': 2 * 60 * 60 * 1000,
+    '4h': 4 * 60 * 60 * 1000,
+    '6h': 6 * 60 * 60 * 1000,
+    '8h': 8 * 60 * 60 * 1000,
+    '12h': 12 * 60 * 60 * 1000,
+    '1d': 24 * 60 * 60 * 1000,
+    '3d': 3 * 24 * 60 * 60 * 1000,
+    '1w': 7 * 24 * 60 * 60 * 1000,
+    '1M': 30 * 24 * 60 * 60 * 1000  # Приблизительно
+}
+
 def date_to_milliseconds(date_str):
     """Convert UTC date string to milliseconds since epoch."""
     try:
@@ -26,12 +45,12 @@ def date_to_milliseconds(date_str):
         logger.error(f"Date conversion error: {str(e)}")
         raise
 
-def get_first_trading_date(symbol, max_retries=3):
+def get_first_trading_date(symbol, interval='1m', max_retries=3):
     """
     Получает реальную дату начала торгов для символа через API Binance.
     Запрашивает данные с очень ранней даты и использует первую полученную свечу.
     """
-    logger.info(f"Getting first trading date for {symbol}")
+    logger.info(f"Getting first trading date for {symbol} with interval {interval}")
     
     # Используем очень раннюю дату (до создания Binance)
     early_start = date_to_milliseconds("2010-01-01 00:00:00")
@@ -40,7 +59,7 @@ def get_first_trading_date(symbol, max_retries=3):
     url = "https://api.binance.com/api/v3/klines"
     params = {
         'symbol': symbol,
-        'interval': '1m',
+        'interval': interval,
         'startTime': early_start,
         'endTime': end_time,
         'limit': 1  # Запрашиваем только первую свечу
@@ -56,7 +75,7 @@ def get_first_trading_date(symbol, max_retries=3):
                 if data:
                     first_timestamp = data[0][0]  # Время открытия первой свечи
                     first_date = datetime.fromtimestamp(first_timestamp/1000)
-                    logger.info(f"First trading date for {symbol}: {first_date}")
+                    logger.info(f"First trading date for {symbol} ({interval}): {first_date}")
                     return first_timestamp
                 else:
                     logger.warning(f"No data returned for {symbol}")
@@ -79,12 +98,12 @@ def get_first_trading_date(symbol, max_retries=3):
     logger.error(f"Failed to get first trading date for {symbol}")
     return None
 
-def fetch_klines(start_time, end_time, symbol, max_retries=5, delay=0.2):
-    """Fetch minute klines from Binance API with retries."""
+def fetch_klines(start_time, end_time, symbol, interval='1m', max_retries=5, delay=0.2):
+    """Fetch klines from Binance API with retries."""
     url = "https://api.binance.com/api/v3/klines"
     params = {
         'symbol': symbol,
-        'interval': '1m',
+        'interval': interval,
         'startTime': start_time,
         'endTime': end_time,
         'limit': 1000
@@ -144,17 +163,21 @@ def main():
                         help='Trading symbol (e.g., BNBUSDT, BTCUSDT, ETHUSDT)')
     parser.add_argument('--start_date', type=str, default='2017-11-06 00:00:00',
                         help='Start date in format YYYY-MM-DD HH:MM:SS')
+    parser.add_argument('--interval', type=str, default='1m', 
+                        choices=['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'],
+                        help='Time interval for candles (default: 1m)')
     args = parser.parse_args()
     
     symbol = args.symbol
     symbol_lower = symbol.lower()
     start_date = args.start_date
-    output_file = f"{symbol_lower}_minute_prices.json"
+    interval = args.interval
+    output_file = f"{symbol_lower}_{interval}_prices.json"
     
-    logger.info(f"Starting {symbol} minute data download")
+    logger.info(f"Starting {symbol} {interval} data download")
     
     # Получаем реальную дату начала торгов
-    first_trading_timestamp = get_first_trading_date(symbol)
+    first_trading_timestamp = get_first_trading_date(symbol, interval)
     if first_trading_timestamp:
         # Используем максимальное значение между указанной датой и реальной датой начала торгов
         current_start = max(date_to_milliseconds(start_date), first_trading_timestamp)
@@ -170,14 +193,16 @@ def main():
     request_count = 0
     last_successful_timestamp = current_start
     empty_intervals = 0
-    max_empty_intervals = 100  # Уменьшил, так как теперь мы знаем реальную дату начала
+    max_empty_intervals = 100
     
     try:
         while current_start < end_time:
-            current_end = current_start + 1000 * 60 * 1000 - 1
+            # Вычисляем конечное время для запроса (1000 свечей)
+            interval_ms = INTERVAL_TO_MS[interval]
+            current_end = current_start + (1000 * interval_ms) - 1
             
             logger.debug(f"Fetching {datetime.fromtimestamp(current_start/1000)} to {datetime.fromtimestamp(min(current_end, end_time)/1000)}")
-            klines = fetch_klines(current_start, min(current_end, end_time), symbol)
+            klines = fetch_klines(current_start, min(current_end, end_time), symbol, interval)
             
             if klines is None:
                 logger.error(f"Failed to get data for range: {current_start}-{current_end}")
@@ -209,7 +234,7 @@ def main():
             last_successful_timestamp = current_start
             
             last_timestamp = klines[-1][0]
-            current_start = last_timestamp + 60000
+            current_start = last_timestamp + interval_ms  # Переходим к следующей свече
             
             if request_count % 50 == 0:
                 save_progress(all_data, output_file)
@@ -220,6 +245,7 @@ def main():
                             f"From {datetime.fromtimestamp(first_ts/1000)} to "
                             f"{datetime.fromtimestamp(last_ts/1000)}")
             
+            # Задержка для соблюдения лимитов API
             time.sleep(0.2)
     
     except KeyboardInterrupt:
