@@ -2,6 +2,8 @@ import json
 import collections
 from datetime import datetime
 import math
+import argparse
+import os
 
 def calculate_price_changes(input_file, output_file):
     # Загрузка исторических данных
@@ -40,7 +42,9 @@ def calculate_price_changes(input_file, output_file):
     print(f"\nПроцентные изменения сохранены в {output_file}")
     return results
 
-def frequency_analysis(changes_data):
+def frequency_analysis(changes_data, symbol):
+    symbol_lower = symbol.lower()
+    
     # Извлекаем только значения изменений
     changes = [item[1] for item in changes_data]
     
@@ -51,7 +55,7 @@ def frequency_analysis(changes_data):
     sorted_freq = counter.most_common()
     
     # Сохраняем полный анализ в файл
-    with open('frequency_analysis_full_bnb.json', 'w') as f:
+    with open(f'frequency_analysis_full_{symbol_lower}.json', 'w') as f:
         json.dump(sorted_freq, f)
     
     # Находим экстремальные значения
@@ -94,22 +98,38 @@ def frequency_analysis(changes_data):
     report.append(f"Уникальных значений: {len(sorted_freq):,}")
     
     # Сохранение отчета
-    with open('frequency_analysis_report_bnb.txt', 'w') as f:
+    report_filename = f'frequency_analysis_report_{symbol_lower}.txt'
+    with open(report_filename, 'w') as f:
         f.write("\n".join(report))
     
     # Вывод сокращенной версии в консоль
-    print("\n".join(report[:55] + ["...", f"Полный отчет сохранен в frequency_analysis_report_bnb.txt"]))
+    print("\n".join(report[:55] + ["...", f"Полный отчет сохранен в {report_filename}"]))
     return sorted_freq
 
 def main():
-    input_file = "bnb_usdt_minute_prices.json"  # Файл с исходными данными
-    changes_file = "price_changes_bnb.json"         # Файл для сохранения изменений
+    parser = argparse.ArgumentParser(description='Analyze cryptocurrency price changes')
+    parser.add_argument('--symbol', type=str, default='BNBUSDT',
+                        help='Trading symbol (e.g., BNBUSDT, BTCUSDT, ETHUSDT)')
+    args = parser.parse_args()
+    
+    symbol = args.symbol
+    symbol_lower = symbol.lower()
+    
+    input_file = f"{symbol_lower}_minute_prices.json"
+    
+    # Проверяем существование файла
+    if not os.path.exists(input_file):
+        print(f"Ошибка: файл {input_file} не найден.")
+        print(f"Сначала скачайте данные для пары {symbol} с помощью main.py")
+        return
+    
+    changes_file = f"price_changes_{symbol_lower}.json"
     
     # Шаг 1: Расчет процентных изменений
     changes_data = calculate_price_changes(input_file, changes_file)
     
     # Шаг 2: Частотный анализ
-    frequency_analysis(changes_data)
+    frequency_analysis(changes_data, symbol)
 
 if __name__ == "__main__":
     main()
